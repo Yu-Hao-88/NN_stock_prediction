@@ -28,7 +28,8 @@ def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboa
             # forward + backward + optimize
             outputs = net(inputs)
             loss = criterion(outputs, labels.unsqueeze(1))
-            train_loss += loss.item()*inputs.shape[0]
+
+            train_loss += loss.item()
             loss.backward()
             optimizer.step()
 
@@ -51,10 +52,11 @@ def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboa
 
             # forward pass: compute predicted outputs by passing inputs to the model
             outputs = net(inputs)
+
             # calculate the batch loss
             loss = criterion(outputs, labels)
             # update average validation loss
-            valid_loss += loss.item()*inputs.shape[0]
+            valid_loss += loss.item()
 
         # calculate average losses
         train_loss = train_loss/len(trainloader.dataset)
@@ -83,5 +85,6 @@ def tester(device, net, criterion, testloader):
             inputs = inputs.to(device)
             labels = labels.to(device)
             outputs = net(inputs)
-            loss += criterion(outputs, labels.unsqueeze(1))
+            loss += criterion(outputs, labels)
+
     return loss.item()

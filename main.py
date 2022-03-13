@@ -50,13 +50,14 @@ if __name__:
     train, test = train_test_split(prices, 0.8)
     # Set the N(look_back)=5
     look_back = 5
-    trainX, trainY = transform_dataset(train, look_back)
-    testX, testY = transform_dataset(test, look_back)
+    target_days = 5
+    trainX, trainY = transform_dataset(train, look_back, target_days)
+    testX, testY = transform_dataset(test, look_back, target_days)
     # Get dataset
     trainset = Dataset(trainX, trainY)
     testset = Dataset(testX, testY)
     # Get dataloader
-    batch_size = 100
+    batch_size = 128
     # num_workers should set 1 if put data on CUDA
     trainloader = torch.utils.data.DataLoader(
         trainset,
@@ -74,7 +75,7 @@ if __name__:
     )
 
     # Model
-    net = LSTMPredictor(look_back)
+    net = LSTMPredictor(look_back, target_days)
 
     # Loss function
     criterion = nn.MSELoss()
