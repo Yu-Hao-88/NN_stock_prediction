@@ -1,7 +1,8 @@
+from tkinter.tix import Tree
 from utils.utils import pickleStore, readData
 from preprocessing.preprocessing import preprocess, transform_dataset, train_test_split
 from dataset.dataset import Dataset
-from model.model import LSTMPredictor
+from model.model import LSTMPredictor, GRUModel
 from trainer.supervised import trainer, tester
 from mytensorboard.tensorboard import TensorBoard
 
@@ -75,7 +76,14 @@ if __name__:
     )
 
     # Model
-    net = LSTMPredictor(look_back, target_days)
+    # net = LSTMPredictor(look_back, target_days)
+    net = GRUModel(
+        input_dim=look_back,
+        hidden_dim=64,
+        layer_dim=2,
+        output_dim=target_days,
+        dropout_prob=0.2
+    )
 
     # Loss function
     criterion = nn.MSELoss()
@@ -84,8 +92,8 @@ if __name__:
     optimizer = optim.Adam(net.parameters(), lr=0.002)
 
     # Training
-    retrain = False
-    model_name = 'init'
+    retrain = True
+    model_name = 'GRU'
     checkpoint = f"./checkpoint/{model_name}.pt"
     if not os.path.isfile(checkpoint) or retrain:
         tensorboard = TensorBoard()
@@ -93,10 +101,10 @@ if __name__:
 
         trainer(device, net, criterion, optimizer, trainloader,
                 testloader, tensorboard, epoch_n=100, path=checkpoint)
-
+        
         tensorboard.close_tensorboard_writers()
-    else:
-        net.load_state_dict(torch.load(checkpoint))
+    
+    net.load_state_dict(torch.load(checkpoint))
 
     # Test the model
     test = tester(device, net, criterion, testloader)
@@ -104,6 +112,10 @@ if __name__:
     print('Test Loss Result: ', test)
 
     # Predict
-    predict = net.predict(torch.tensor(
-        [[126, 124, 124, 122.5, 121]], dtype=torch.float32, device=device))
+    predict_input = torch.tensor(
+        [[[126, 124, 124, 122.5, 121]]], dtype=torch.float32, device=device)
+    net = net.to(device)
+    net.eval()
+    with torch.no_grad():
+        predict = net(predict_input)
     print('Predict Result', predict)

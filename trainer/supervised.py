@@ -19,7 +19,7 @@ def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboa
         for i, data in enumerate(trainloader, 0):
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels, data_index = data
-            inputs = inputs.to(device)
+            inputs = inputs.unsqueeze(1).to(device)
             labels = labels.to(device)
 
             # zero the parameter gradients
@@ -27,7 +27,7 @@ def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboa
 
             # forward + backward + optimize
             outputs = net(inputs)
-            loss = criterion(outputs, labels.unsqueeze(1))
+            loss = criterion(outputs, labels)
 
             train_loss += loss.item()
             loss.backward()
@@ -47,7 +47,7 @@ def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboa
         for i, data in enumerate(devloader, 0):
             # move tensors to GPU if CUDA is available
             inputs, labels, data_index = data
-            inputs = inputs.to(device)
+            inputs = inputs.unsqueeze(1).to(device)
             labels = labels.to(device)
 
             # forward pass: compute predicted outputs by passing inputs to the model
@@ -59,8 +59,8 @@ def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboa
             valid_loss += loss.item()
 
         # calculate average losses
-        train_loss = train_loss/len(trainloader.dataset)
-        valid_loss = valid_loss/len(devloader.dataset)
+        train_loss = train_loss/len(trainloader)
+        valid_loss = valid_loss/len(devloader)
 
         # print training/validation statistics
         print('\tTraining Loss: {:.6f} \tValidation Loss: {:.6f}'.format(
@@ -79,12 +79,13 @@ def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboa
 def tester(device, net, criterion, testloader):
     loss = 0
     net = net.to(device)
+    net.eval()
     with torch.no_grad():
         for data in testloader:
             inputs, labels, data_index = data
-            inputs = inputs.to(device)
+            inputs = inputs.unsqueeze(1).to(device)
             labels = labels.to(device)
             outputs = net(inputs)
             loss += criterion(outputs, labels)
 
-    return loss.item()
+    return (loss/len(testloader)).item()
