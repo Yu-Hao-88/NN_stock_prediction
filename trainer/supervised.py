@@ -7,15 +7,16 @@ import sys
 sys.path.insert(1, '../')
 
 
-def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboard, epoch_n=100, path="./checkpoint/save.pt"):
+def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboard, batch_size, epoch_n=100, path="./checkpoint/save.pt"):
     best_valid_loss = float("inf")
     net = net.to(device)
+
     train_loss_list = []
     valid_loss_list = []
 
     for epoch in range(epoch_n):  # loop over the dataset multiple times
         net.train()
-        running_loss = 0.0
+        hidden = net.init_hidden(batch_size)
         train_loss = 0.0
         valid_loss = 0.0
         for i, data in enumerate(trainloader, 0):
@@ -28,19 +29,12 @@ def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboa
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            outputs = net(inputs)
+            outputs, hidden = net(inputs, hidden)
             loss = criterion(outputs, labels)
 
             train_loss += loss.item()
             loss.backward()
             optimizer.step()
-
-            # print statistics
-            # running_loss += loss.item()
-            # if i % 10 == 9:    # print every 2000 mini-batches
-            #     print('[%d, %5d] loss: %.3f' %
-            #           (epoch + 1, i + 1, running_loss / 2000))
-            #     running_loss = 0.0
 
         ######################
         # validate the model #
@@ -52,8 +46,9 @@ def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboa
             inputs = inputs.unsqueeze(1).to(device)
             labels = labels.to(device)
 
+            hidden = net.init_hidden(inputs.size()[0])
             # forward pass: compute predicted outputs by passing inputs to the model
-            outputs = net(inputs)
+            outputs, hidden = net(inputs, hidden)
 
             # calculate the batch loss
             loss = criterion(outputs, labels)
@@ -65,8 +60,8 @@ def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboa
         valid_loss = valid_loss/len(devloader)
 
         # print training/validation statistics
-        print('\tTraining Loss: {:.6f} \tValidation Loss: {:.6f}'.format(
-            train_loss, valid_loss))
+        print('Epochs: {:} \tTraining Loss: {:.6f} \tValidation Loss: {:.6f}'.format(
+            epoch, train_loss, valid_loss))
         tensorboard.log_on_tensorboard('train', epoch, train_loss)
         tensorboard.log_on_tensorboard('valid', epoch, valid_loss)
         train_loss_list.append(train_loss)
@@ -82,7 +77,7 @@ def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboa
     return train_loss_list, valid_loss_list
 
 
-def tester(device, net, criterion, testloader):
+def tester(device, net, criterion, testloader, batch_size):
     loss = 0
     net = net.to(device)
     net.eval()
@@ -90,8 +85,9 @@ def tester(device, net, criterion, testloader):
         for data in testloader:
             inputs, labels, data_index = data
             inputs = inputs.unsqueeze(1).to(device)
+            hidden = net.init_hidden(inputs.size()[0])
             labels = labels.to(device)
-            outputs = net(inputs)
+            outputs, _ = net(inputs, hidden)
             loss += criterion(outputs, labels)
 
     return (loss/len(testloader)).item()

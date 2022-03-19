@@ -58,13 +58,14 @@ if __name__:
     trainset = Dataset(trainX, trainY)
     testset = Dataset(testX, testY)
     # Get dataloader
-    batch_size = 128
+    batch_size = 64
     # num_workers should set 1 if put data on CUDA
     trainloader = torch.utils.data.DataLoader(
         trainset,
         batch_size=batch_size,
         shuffle=True,
         pin_memory=use_cuda,
+        drop_last=True
         # num_workers=1
     )
     testloader = torch.utils.data.DataLoader(
@@ -97,13 +98,13 @@ if __name__:
     model_name = 'GRU_baseline'
     checkpoint = f"./checkpoint/{model_name}.pt"
     if not os.path.isfile(checkpoint) or retrain:
-        epochs = 500
+        epochs = 100
         tensorboard = TensorBoard()
         tensorboard.init_tensorboard_writers(model_name)
 
         train_loss, valid_loss = trainer(
             device, net, criterion, optimizer, trainloader,
-            testloader, tensorboard, epoch_n=epochs, path=checkpoint)
+            testloader, tensorboard, batch_size, epoch_n=epochs, path=checkpoint)
 
         tensorboard.close_tensorboard_writers()
 
@@ -122,7 +123,7 @@ if __name__:
     net.load_state_dict(torch.load(checkpoint))
 
     # Test the model
-    test = tester(device, net, criterion, testloader)
+    test = tester(device, net, criterion, testloader, batch_size)
     # Show the difference between predict and groundtruth (loss)
     print('Test Loss Result: ', test)
 
@@ -138,8 +139,9 @@ if __name__:
         ]]], dtype=torch.float32, device=device)
     net = net.to(device)
     net.eval()
+    hidden = net.init_hidden(1)
     with torch.no_grad():
-        predict = net(predict_input)
+        predict, _ = net(predict_input, hidden)
     print('Predict Result', predict)
     answer = torch.tensor([[101.50, 99.70, 99.00, 108.50,
                           114.00]], dtype=torch.float32, device=device)
