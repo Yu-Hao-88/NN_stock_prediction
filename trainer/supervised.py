@@ -72,7 +72,7 @@ def trainer(device, net, criterion, optimizer, scheduler, trainloader, devloader
             # Save model
             saveModel(net, path)
 
-        # scheduler.step()
+        scheduler.step()
 
     print('Finished Training')
 

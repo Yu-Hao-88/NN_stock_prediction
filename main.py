@@ -102,7 +102,7 @@ if __name__:
     model_name = 'GRU_final'
     checkpoint = f"./checkpoint/{model_name}.pt"
     if not os.path.isfile(checkpoint) or retrain:
-        epochs = 100
+        epochs = 500
         tensorboard = TensorBoard()
         tensorboard.init_tensorboard_writers(model_name)
 
@@ -157,9 +157,9 @@ if __name__:
     loss = criterion(answer, predict)
     print('loss: ', loss)
 
-    predict, _ = net(predict_input, hidden)
-    # 3. 使用graphviz进行可视化
-    g = make_dot(predict, params=dict(list(net.named_parameters())))
-    g.render(f'./data/img/{model_name}_model_arch', view=False, format='png')
+    # predict, _ = net(predict_input, hidden)
+    # # 3. 使用graphviz进行可视化
+    # g = make_dot(predict, params=dict(list(net.named_parameters())))
+    # g.render(f'./data/img/{model_name}_model_arch', view=False, format='png')
 
     torch.save(net, f"./data/{model_name}.pt")
