@@ -1,10 +1,12 @@
+from inspect import Parameter
 from utils.utils import pickleStore, readData
-from preprocessing.preprocessing import preprocess, transform_dataset, train_test_split
+from preprocessing.preprocessing import preprocess, transform_dataset, train_test_split, normalize
 from dataset.dataset import Dataset
 from model.model import LSTMPredictor, GRUModel
 from trainer.supervised import trainer, tester
 from mytensorboard.tensorboard import TensorBoard
 import matplotlib.pyplot as plt
+from torchviz import make_dot
 
 import random
 import os
@@ -46,14 +48,14 @@ if __name__:
     print('Num of samples:', len(data))
 
     # Preprocess
-    prices = preprocess(data)
+    prices, stats = preprocess(data)
     # Divide trainset and test set
     train, test = train_test_split(prices, 0.8)
     # Set the N(look_back)=5
     look_back = 5
     target_days = 5
-    trainX, trainY = transform_dataset(train, look_back, target_days)
-    testX, testY = transform_dataset(test, look_back, target_days)
+    trainX, trainY = transform_dataset(train, stats, look_back, target_days)
+    testX, testY = transform_dataset(test, stats, look_back, target_days)
     # Get dataset
     trainset = Dataset(trainX, trainY)
     testset = Dataset(testX, testY)
@@ -93,9 +95,11 @@ if __name__:
     # Optimizer
     optimizer = optim.Adam(net.parameters(), lr=0.002)
 
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.9)
+
     # Training
     retrain = True
-    model_name = 'GRU_baseline'
+    model_name = 'GRU_final'
     checkpoint = f"./checkpoint/{model_name}.pt"
     if not os.path.isfile(checkpoint) or retrain:
         epochs = 100
@@ -103,7 +107,7 @@ if __name__:
         tensorboard.init_tensorboard_writers(model_name)
 
         train_loss, valid_loss = trainer(
-            device, net, criterion, optimizer, trainloader,
+            device, net, criterion, optimizer, scheduler, trainloader,
             testloader, tensorboard, batch_size, epoch_n=epochs, path=checkpoint)
 
         tensorboard.close_tensorboard_writers()
@@ -117,7 +121,7 @@ if __name__:
 
         # save image
         # should before show method
-        plt.savefig(f"./data/img/{model_name}.png")
+        plt.savefig(f"./data/img/{model_name}_loss.png")
         # plt.show()
 
     net.load_state_dict(torch.load(checkpoint))
@@ -129,14 +133,19 @@ if __name__:
 
     # https://www.cnyes.com/twstock/ps_historyprice.aspx?code=1795
     # Predict
+    predict_input = normalize(
+        [
+            [111.00, 112.50, 104.50, 106.00, 10631],  # 3/07
+            [105.00, 109.00, 101.50, 101.50, 9793],
+            [104.00, 107.50, 102.00, 103.00, 6808],
+            [106.00, 109.50, 104.50, 107.00, 8314],
+            [104.00, 105.50, 101.00, 102.50, 6565],  # 3/11
+        ],
+        stats
+    )
+    predict_input = np.reshape(predict_input, (1, -1))
     predict_input = torch.tensor(
-        [[[
-            111.00,	112.50,	104.50,	106.00,	10631,  # 3/07
-            105.00,	109.00,	101.50,	101.50, 9793,
-            104.00,	107.50,	102.00, 103.00, 6808,
-            106.00,	109.50, 104.50, 107.00, 8314,
-            104.00,	105.50,	101.00,	102.50, 6565,  # 3/11
-        ]]], dtype=torch.float32, device=device)
+        [predict_input], dtype=torch.float32, device=device)
     net = net.to(device)
     net.eval()
     hidden = net.init_hidden(1)
@@ -147,3 +156,10 @@ if __name__:
                           114.00]], dtype=torch.float32, device=device)
     loss = criterion(answer, predict)
     print('loss: ', loss)
+
+    predict, _ = net(predict_input, hidden)
+    # 3. 使用graphviz进行可视化
+    g = make_dot(predict, params=dict(list(net.named_parameters())))
+    g.render(f'./data/img/{model_name}_model_arch', view=False, format='png')
+
+    torch.save(net, f"./data/{model_name}.pt")

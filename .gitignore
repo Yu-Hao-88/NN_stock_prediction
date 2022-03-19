@@ -132,3 +132,4 @@ dmypy.json
 data/tensorboard_log
 checkpoint
 data/img
+data/*.pt

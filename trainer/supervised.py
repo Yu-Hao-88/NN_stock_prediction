@@ -7,7 +7,7 @@ import sys
 sys.path.insert(1, '../')
 
 
-def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboard, batch_size, epoch_n=100, path="./checkpoint/save.pt"):
+def trainer(device, net, criterion, optimizer, scheduler, trainloader, devloader, tensorboard, batch_size, epoch_n=100, path="./checkpoint/save.pt"):
     best_valid_loss = float("inf")
     net = net.to(device)
 
@@ -71,6 +71,8 @@ def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboa
             best_valid_loss = valid_loss
             # Save model
             saveModel(net, path)
+
+        # scheduler.step()
 
     print('Finished Training')
 

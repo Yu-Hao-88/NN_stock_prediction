@@ -1,2 +1,4 @@
 # torch //install by yourself from the pytorch official website 
 tensorboard
+matplotlib
+torchviz
