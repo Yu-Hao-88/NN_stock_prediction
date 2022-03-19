@@ -1,10 +1,10 @@
-from tkinter.tix import Tree
 from utils.utils import pickleStore, readData
 from preprocessing.preprocessing import preprocess, transform_dataset, train_test_split
 from dataset.dataset import Dataset
 from model.model import LSTMPredictor, GRUModel
 from trainer.supervised import trainer, tester
 from mytensorboard.tensorboard import TensorBoard
+import matplotlib.pyplot as plt
 
 import random
 import os
@@ -78,11 +78,12 @@ if __name__:
     # Model
     # net = LSTMPredictor(look_back, target_days)
     net = GRUModel(
-        input_dim=look_back,
+        input_dim=look_back*5,
         hidden_dim=64,
         layer_dim=2,
         output_dim=target_days,
-        dropout_prob=0.2
+        dropout_prob=0.2,
+        device=device
     )
 
     # Loss function
@@ -93,17 +94,31 @@ if __name__:
 
     # Training
     retrain = True
-    model_name = 'GRU'
+    model_name = 'GRU_baseline'
     checkpoint = f"./checkpoint/{model_name}.pt"
     if not os.path.isfile(checkpoint) or retrain:
+        epochs = 500
         tensorboard = TensorBoard()
         tensorboard.init_tensorboard_writers(model_name)
 
-        trainer(device, net, criterion, optimizer, trainloader,
-                testloader, tensorboard, epoch_n=100, path=checkpoint)
-        
+        train_loss, valid_loss = trainer(
+            device, net, criterion, optimizer, trainloader,
+            testloader, tensorboard, epoch_n=epochs, path=checkpoint)
+
         tensorboard.close_tensorboard_writers()
-    
+
+        plt.plot(list(range(epochs)), train_loss, '-b', label='train loss')
+        plt.plot(list(range(epochs)), valid_loss, '-r', label='valid loss')
+
+        plt.xlabel("n iteration")
+        plt.legend(loc='upper right')
+        plt.title(model_name)
+
+        # save image
+        # should before show method
+        plt.savefig(f"./data/img/{model_name}.png")
+        # plt.show()
+
     net.load_state_dict(torch.load(checkpoint))
 
     # Test the model
@@ -111,11 +126,22 @@ if __name__:
     # Show the difference between predict and groundtruth (loss)
     print('Test Loss Result: ', test)
 
+    # https://www.cnyes.com/twstock/ps_historyprice.aspx?code=1795
     # Predict
     predict_input = torch.tensor(
-        [[[126, 124, 124, 122.5, 121]]], dtype=torch.float32, device=device)
+        [[[
+            111.00,	112.50,	104.50,	106.00,	10631,  # 3/07
+            105.00,	109.00,	101.50,	101.50, 9793,
+            104.00,	107.50,	102.00, 103.00, 6808,
+            106.00,	109.50, 104.50, 107.00, 8314,
+            104.00,	105.50,	101.00,	102.50, 6565,  # 3/11
+        ]]], dtype=torch.float32, device=device)
     net = net.to(device)
     net.eval()
     with torch.no_grad():
         predict = net(predict_input)
     print('Predict Result', predict)
+    answer = torch.tensor([[101.50, 99.70, 99.00, 108.50,
+                          114.00]], dtype=torch.float32, device=device)
+    loss = criterion(answer, predict)
+    print('loss: ', loss)

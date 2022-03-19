@@ -19,9 +19,9 @@ def preprocess(data):
     low = data[:, 3]
     close = data[:, 4]
     volume = data[:, 5]
-    prices = np.array([close for date, open, high, low,
+    prices = np.array([[open, high, low, close, volume] for date, open, high, low,
                       close, volume in data]).astype(np.float64)
-    print(prices)
+    # print(prices)
     return prices
 
 
@@ -33,10 +33,10 @@ def train_test_split(data, percentage=0.8):
 
 def transform_dataset(dataset, look_back=5, target_days=1):
     # N days as training sample
-    dataX = [dataset[i:(i + look_back)]
+    dataX = [np.reshape(dataset[i:(i + look_back)], (1, -1))[0]
              for i in range(len(dataset)-look_back-target_days)]
     # 1 day as groundtruth
-    dataY = [dataset[i + look_back:i+look_back+target_days]
+    dataY = [dataset[i + look_back:i+look_back+target_days, 3]
              for i in range(len(dataset)-look_back-target_days)]
 
     return torch.tensor(np.array(dataX), dtype=torch.float32), torch.tensor(np.array(dataY), dtype=torch.float32)

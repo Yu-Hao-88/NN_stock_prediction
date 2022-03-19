@@ -10,6 +10,8 @@ sys.path.insert(1, '../')
 def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboard, epoch_n=100, path="./checkpoint/save.pt"):
     best_valid_loss = float("inf")
     net = net.to(device)
+    train_loss_list = []
+    valid_loss_list = []
 
     for epoch in range(epoch_n):  # loop over the dataset multiple times
         net.train()
@@ -67,6 +69,8 @@ def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboa
             train_loss, valid_loss))
         tensorboard.log_on_tensorboard('train', epoch, train_loss)
         tensorboard.log_on_tensorboard('valid', epoch, valid_loss)
+        train_loss_list.append(train_loss)
+        valid_loss_list.append(valid_loss)
 
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
@@ -74,6 +78,8 @@ def trainer(device, net, criterion, optimizer, trainloader, devloader, tensorboa
             saveModel(net, path)
 
     print('Finished Training')
+
+    return train_loss_list, valid_loss_list
 
 
 def tester(device, net, criterion, testloader):
